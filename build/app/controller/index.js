@@ -11,10 +11,10 @@ const index = (req, res) => {
 exports.index = index;
 const xLogin = async (req, res) => {
     try {
-        const { username, password } = req.body;
+        const { username, password, email } = req.body;
         console.log(username, password);
         const twitter = new TwitterApi_1.default();
-        const login = await twitter.Login(username, password);
+        const login = await twitter.Login(username, password, email);
         AccountTwitter[username] = twitter;
         return res.json({ message: "success", key: username, reason: login, });
     }
@@ -32,6 +32,7 @@ const xPostTweet = async (req, res) => {
         return res.json({ message: "success", reason: responses });
     }
     catch (error) {
+        console.log(error);
         return res.json({ message: "error", reason: error });
     }
 };

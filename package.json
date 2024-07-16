@@ -4,7 +4,8 @@
   "main": "build/app/index.js",
   "scripts": {
     "start": "node build/app/index.js",
-    "server:dev": "nodemon app/index.ts"
+    "server:dev": "nodemon app/index.ts",
+    "server": "ts-node app/index.ts"
   },
   "keywords": [],
   "author": "",

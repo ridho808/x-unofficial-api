@@ -7,10 +7,10 @@ export const index = (req: Request, res: Response) => {
 }
 export const xLogin = async (req: Request, res: Response) => {
     try {
-        const { username, password } = req.body
+        const { username, password, email } = req.body
         console.log(username, password);
         const twitter = new TwitterApi()
-        const login = await twitter.Login(username, password)
+        const login = await twitter.Login(username, password, email)
         AccountTwitter[username] = twitter
         return res.json({ message: "success", key: username, reason: login, })
     } catch (error) {
@@ -27,6 +27,7 @@ export const xPostTweet = async (req: Request, res: Response) => {
         let responses = await AccountTwitter[username].CreateTweet(text)
         return res.json({ message: "success", reason: responses })
     } catch (error) {
+        console.log(error);
         return res.json({ message: "error", reason: error })
     }
 }

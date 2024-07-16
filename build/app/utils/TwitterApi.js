@@ -343,6 +343,31 @@ class TwitterApi {
             return Promise.reject(error);
         }
     }
+    async LoginEnterAlternateIdentifierSubtask(text) {
+        await this.flow_token_check();
+        await this.method_check('LoginEnterAlternateIdentifierSubtask');
+        const data = {
+            flow_token: this.flow_token,
+            subtask_inputs: [
+                {
+                    subtask_id: 'LoginEnterAlternateIdentifierSubtask',
+                    enter_text: { text: text, link: 'next_link' },
+                },
+            ],
+        };
+        try {
+            const response = await this.session.post('https://twitter.com/i/api/1.1/onboarding/task.json', data, {
+                headers: await this.get_headers(),
+            });
+            await this.error_check(response.data);
+            this.flow_token = response.data.flow_token;
+            this.content = response.data;
+            return this;
+        }
+        catch (error) {
+            return Promise.reject(error);
+        }
+    }
     async CreateTweet(text) {
         try {
             let data = JSON.stringify({
@@ -392,7 +417,7 @@ class TwitterApi {
             return error;
         }
     }
-    async Login(username, password) {
+    async Login(username, password, email) {
         try {
             console.log("Login ======== > ", username, password);
             await this.login_flow();
@@ -417,6 +442,16 @@ class TwitterApi {
                     let substask = await this.AccountDuplicationCheck();
                     console.log(substask.get_subtask_ids());
                     fs_1.default.writeFileSync(`./${username}.json`, JSON.stringify({ username: username, data: await this.get_headers() }), "utf-8");
+                }
+                else if (this.get_subtask_ids().includes('LoginEnterAlternateIdentifierSubtask')) {
+                    let substask = await this.LoginEnterAlternateIdentifierSubtask(email);
+                    fs_1.default.writeFileSync(`./${username}.json`, JSON.stringify({ username: username, data: await this.get_headers() }), "utf-8");
+                    console.log(substask.get_subtask_ids());
+                    login = true;
+                }
+                else if (this.get_subtask_ids().includes('SuccessExit')) {
+                    // let substask = await this.successExit();
+                    // console.log(substask.get_subtask_ids());
                     login = true;
                     break;
                 }
