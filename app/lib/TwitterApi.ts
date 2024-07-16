@@ -26,7 +26,6 @@ class TwitterApi {
         this.ct0 = null
         this.content = null
     }
-
     async get_guest_token(): Promise<string> {
         try {
             let headers = {
@@ -35,6 +34,7 @@ class TwitterApi {
                 'Sec-Ch-Ua': this.sSecChUa,
                 'Sec-Ch-Ua-Mobile': '?0',
                 'Sec-Ch-Ua-Platform': this.sSecChUaPlatform,
+                'Accept-Language': 'en-US,en;q=0.9',
             }
             const responses = await this.session.post('https://api.twitter.com/1.1/guest/activate.json', {}, {
                 headers
@@ -45,7 +45,6 @@ class TwitterApi {
             throw new Error('Guest Token retrival failed');
         }
     }
-
     async get_headers(): Promise<any> {
         let headers = {
             'authorization': this.PublicToken,
@@ -60,7 +59,8 @@ class TwitterApi {
             'x-guest-token': await this.get_guest_token(),
             'x-csrf-token': this.ct0,
             'x-twitter-active-user': 'yes',
-            'Cookie': this.cookie
+            'Cookie': this.cookie,
+            'Accept-Language': 'en-US,en;q=0.9',
         }
         return headers
     }
@@ -88,13 +88,11 @@ class TwitterApi {
             throw new Error('Token not found');
         }
     }
-
     async twitter(): Promise<TwitterApi> {
         return this.session.get("https://twitter.com/")
             .then(() => this)
             .catch(() => Promise.reject(this.error_check()))
     }
-
     async login_flow(): Promise<TwitterApi> {
         const data = JSON.stringify({
             "input_flow_data": {
@@ -165,7 +163,6 @@ class TwitterApi {
             })
             .catch((err) => Promise.reject(err))
     }
-
     async LoginJsInstrumentationSubtask(): Promise<TwitterApi> {
         console.log('LoginJsInstrumentationSubtask');
 
@@ -358,7 +355,6 @@ class TwitterApi {
             return Promise.reject(error);
         }
     }
-
     async LoginEnterAlternateIdentifierSubtask(text: string): Promise<TwitterApi> {
 
         await this.flow_token_check();
@@ -385,7 +381,75 @@ class TwitterApi {
         }
 
     }
+    async GetLocationTrends(location: string): Promise<any> {
+        try {
+            const response = await this.session.get(`https://x.com/i/api/2/guide/explore_locations_with_auto_complete.json?prefix=${location}`, {
+                headers: await this.get_headers(),
+            })
+            let { data } = response
+            const indonesiaObject = data.find((place: any) => place.name.toLowerCase() === location.toLowerCase());
+            return indonesiaObject
+        } catch (error) {
+            return Promise.reject(error)
+        }
 
+    }
+    async SetTrendsLocation(id: string): Promise<any> {
+        try {
+            const response = await this.session.post(`https://x.com/i/api/2/guide/set_explore_settings.json`, JSON.stringify({
+                places: id
+            }), {
+                headers: await this.get_headers(),
+            });
+            return response.data
+        } catch (error) {
+            console.log(error);
+            return Promise.reject(error)
+        }
+    }
+    async getTrends(): Promise<any> {
+        try {
+            const param = {
+                variables: '{"cursor":""}',
+                features: JSON.stringify({
+                    rweb_tipjar_consumption_enabled: true,
+                    responsive_web_graphql_exclude_directive_enabled: true,
+                    verified_phone_label_enabled: false,
+                    responsive_web_graphql_timeline_navigation_enabled: true,
+                    responsive_web_graphql_skip_user_profile_image_extensions_enabled: false,
+                    creator_subscriptions_tweet_preview_api_enabled: true,
+                    communities_web_enable_tweet_community_results_fetch: true,
+                    c9s_tweet_anatomy_moderator_badge_enabled: true,
+                    articles_preview_enabled: true,
+                    tweetypie_unmention_optimization_enabled: true,
+                    responsive_web_edit_tweet_api_enabled: true,
+                    graphql_is_translatable_rweb_tweet_is_translatable_enabled: true,
+                    view_counts_everywhere_api_enabled: true,
+                    longform_notetweets_consumption_enabled: true,
+                    responsive_web_twitter_article_tweet_consumption_enabled: true,
+                    tweet_awards_web_tipping_enabled: false,
+                    creator_subscriptions_quote_tweet_preview_enabled: false,
+                    freedom_of_speech_not_reach_fetch_enabled: true,
+                    standardized_nudges_misinfo: true,
+                    tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled: true,
+                    rweb_video_timestamps_enabled: true,
+                    longform_notetweets_rich_text_read_enabled: true,
+                    longform_notetweets_inline_media_enabled: true,
+                    responsive_web_enhance_cards_enabled: false
+                })
+            }
+
+            const response = await this.session.get(`https://x.com/i/api/graphql/5Idy0EJFuBTl3PR_T_HYOQ/ExplorePage`, {
+                params: param,
+                headers: await this.get_headers(),
+            });
+            return response.data
+        } catch (error: any) {
+            console.log(error.response.data);
+
+            return Promise.reject(error)
+        }
+    }
     async CreateTweet(text: string): Promise<any> {
         try {
             let data = JSON.stringify(
@@ -436,7 +500,7 @@ class TwitterApi {
             return error
         }
     }
-    async Login(username: string, password: string, email: string): Promise<{ data: TwitterApi, message: string }> {
+    async Login(username: string, password: string, email: string, key: string): Promise<{ data: string | null, message: string }> {
         try {
             console.log("Login ======== > ", username, password);
             await this.login_flow();
@@ -444,42 +508,31 @@ class TwitterApi {
             let Password = password
             let login = false
             while (!login) {
-                console.log(this.get_subtask_ids());
                 if (this.get_subtask_ids().includes('LoginJsInstrumentationSubtask')) {
-                    let substask = await this.LoginJsInstrumentationSubtask();
-                    console.log(substask.get_subtask_ids());
+                    await this.LoginJsInstrumentationSubtask();
                 } else if (this.get_subtask_ids().includes('LoginEnterUserIdentifierSSO')) {
-                    let substask = await this.LoginEnterUserIdentifierSSO(Username);
-                    console.log(substask.get_subtask_ids());
+                    await this.LoginEnterUserIdentifierSSO(Username);
                 } else if (this.get_subtask_ids().includes('LoginEnterPassword')) {
-                    let substask = await this.LoginEnterPassword(Password);
-                    console.log(substask.get_subtask_ids());
+                    await this.LoginEnterPassword(Password);
                 } else if (this.get_subtask_ids().includes('AccountDuplicationCheck')) {
-                    let substask = await this.AccountDuplicationCheck();
-                    console.log(substask.get_subtask_ids());
-                    fs.writeFileSync(`./${username}.json`, JSON.stringify({ username: username, data: await this.get_headers() }), "utf-8")
+                    await this.AccountDuplicationCheck();
                 } else if (this.get_subtask_ids().includes('LoginEnterAlternateIdentifierSubtask')) {
                     let substask = await this.LoginEnterAlternateIdentifierSubtask(email);
-                    fs.writeFileSync(`./${username}.json`, JSON.stringify({ username: username, data: await this.get_headers() }), "utf-8")
+                    fs.writeFileSync(`./app/store/${key}.json`, JSON.stringify({ username: username, data: await this.get_headers() }), "utf-8")
                     console.log(substask.get_subtask_ids())
-                    login = true;
                 } else if (this.get_subtask_ids().includes('SuccessExit')) {
-                    // let substask = await this.successExit();
-                    // console.log(substask.get_subtask_ids());
                     login = true
                     break
                 }
             }
-            return { data: this, message: "Login Success" }
-        } catch (error) {
-            console.log(error);
-            return Promise.reject(error);
+            return { data: this.cookie, message: "SUCCESS LOGIN AS " + username }
+        } catch (error: any) {
+            return Promise.reject({ data: null, message: "FAILED LOGIN AS " + username + " " });
         }
     }
-
-    async LoginCookies(username: string) {
+    async LoginCookies(keys: string) {
         try {
-            let ReadFile = fs.readFileSync(`${username}.json`, "utf-8");
+            let ReadFile = fs.readFileSync(`./app/store/${keys}.json`, "utf-8");
             let { data } = JSON.parse(ReadFile);
             this.PublicToken = data.authorization
             this.UserAgent = data['User-Agent']
@@ -492,6 +545,128 @@ class TwitterApi {
         } catch (error) {
             return Promise.reject(error)
         }
+    }
+    async getInfoUsers(username: string) {
+        const response = await this.session.get(`https://x.com/i/api/graphql/xmU6X_CKVnQ5lSrCbAmJsg/UserByScreenName?variables=%7B%22screen_name%22%3A%22${username}%22%2C%22withSafetyModeUserFields%22%3Atrue%7D&features=%7B%22hidden_profile_subscriptions_enabled%22%3Atrue%2C%22rweb_tipjar_consumption_enabled%22%3Atrue%2C%22responsive_web_graphql_exclude_directive_enabled%22%3Atrue%2C%22verified_phone_label_enabled%22%3Afalse%2C%22subscriptions_verification_info_is_identity_verified_enabled%22%3Atrue%2C%22subscriptions_verification_info_verified_since_enabled%22%3Atrue%2C%22highlights_tweets_tab_ui_enabled%22%3Atrue%2C%22responsive_web_twitter_article_notes_tab_enabled%22%3Atrue%2C%22subscriptions_feature_can_gift_premium%22%3Atrue%2C%22creator_subscriptions_tweet_preview_api_enabled%22%3Atrue%2C%22responsive_web_graphql_skip_user_profile_image_extensions_enabled%22%3Afalse%2C%22responsive_web_graphql_timeline_navigation_enabled%22%3Atrue%7D&fieldToggles=%7B%22withAuxiliaryUserLabels%22%3Afalse%7D`, {
+            headers: await this.get_headers(),
+        })
+        return response.data
+    }
+    async GetTweetUser(userid: string) {
+        const params = {
+            variables: JSON.stringify({
+                userId: userid,
+                count: 10,
+                includePromotedContent: true,
+                withQuickPromoteEligibilityTweetFields: true,
+                withVoice: true,
+                withV2Timeline: true
+            }),
+            features: JSON.stringify({
+                rweb_tipjar_consumption_enabled: true,
+                responsive_web_graphql_exclude_directive_enabled: true,
+                verified_phone_label_enabled: false,
+                creator_subscriptions_tweet_preview_api_enabled: true,
+                responsive_web_graphql_timeline_navigation_enabled: true,
+                responsive_web_graphql_skip_user_profile_image_extensions_enabled: false,
+                communities_web_enable_tweet_community_results_fetch: true,
+                c9s_tweet_anatomy_moderator_badge_enabled: true,
+                articles_preview_enabled: true,
+                tweetypie_unmention_optimization_enabled: true,
+                responsive_web_edit_tweet_api_enabled: true,
+                graphql_is_translatable_rweb_tweet_is_translatable_enabled: true,
+                view_counts_everywhere_api_enabled: true,
+                longform_notetweets_consumption_enabled: true,
+                responsive_web_twitter_article_tweet_consumption_enabled: true,
+                tweet_awards_web_tipping_enabled: false,
+                creator_subscriptions_quote_tweet_preview_enabled: false,
+                freedom_of_speech_not_reach_fetch_enabled: true,
+                standardized_nudges_misinfo: true,
+                tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled: true,
+                rweb_video_timestamps_enabled: true,
+                longform_notetweets_rich_text_read_enabled: true,
+                longform_notetweets_inline_media_enabled: true,
+                responsive_web_enhance_cards_enabled: false
+            }),
+            fieldToggles: JSON.stringify({
+                withArticlePlainText: false
+            })
+        };
+
+        try {
+            console.log("get tweets");
+
+            const response = await this.session.get(`https://x.com/i/api/graphql/-oADiDXCeko8ztc6Vvth5Q/UserTweets`, {
+                headers: await this.get_headers(),
+                params: params
+            })
+
+            return response.data.data.user
+        } catch (error) {
+            console.log(error);
+            return Promise.reject(error)
+        }
+    }
+    async SearchUser(username: string) {
+        const params = {
+            variables: JSON.stringify({
+                rawQuery: username,
+                count: 20,
+                querySource: "typed_query",
+                product: "People"
+            }),
+            features: JSON.stringify({
+                rweb_tipjar_consumption_enabled: true,
+                responsive_web_graphql_exclude_directive_enabled: true,
+                verified_phone_label_enabled: false,
+                creator_subscriptions_tweet_preview_api_enabled: true,
+                responsive_web_graphql_timeline_navigation_enabled: true,
+                responsive_web_graphql_skip_user_profile_image_extensions_enabled: false,
+                communities_web_enable_tweet_community_results_fetch: true,
+                c9s_tweet_anatomy_moderator_badge_enabled: true,
+                articles_preview_enabled: true,
+                tweetypie_unmention_optimization_enabled: true,
+                responsive_web_edit_tweet_api_enabled: true,
+                graphql_is_translatable_rweb_tweet_is_translatable_enabled: true,
+                view_counts_everywhere_api_enabled: true,
+                longform_notetweets_consumption_enabled: true,
+                responsive_web_twitter_article_tweet_consumption_enabled: true,
+                tweet_awards_web_tipping_enabled: false,
+                creator_subscriptions_quote_tweet_preview_enabled: false,
+                freedom_of_speech_not_reach_fetch_enabled: true,
+                standardized_nudges_misinfo: true,
+                tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled: true,
+                rweb_video_timestamps_enabled: true,
+                longform_notetweets_rich_text_read_enabled: true,
+                longform_notetweets_inline_media_enabled: true,
+                responsive_web_enhance_cards_enabled: false
+            })
+        };
+        const response = await this.session.get('https://x.com/i/api/graphql/6uoFezW1o4e-n-VI5vfksA/SearchTimeline', {
+            headers: await this.get_headers(),
+            params: params
+        })
+        let keys = response?.data?.data?.search_by_raw_query?.search_timeline?.timeline?.instructions
+        let entries = keys?.find((items: any) => items.type === "TimelineAddEntries")
+        let items = entries?.entries
+        let users = items.filter((items: any) => !items.entryId.includes("cursor"))
+        let content = users.map((items: any) => (
+            {
+                userid: items?.content?.itemContent?.user_results?.result?.rest_id,
+                username: items?.content?.itemContent?.user_results?.result?.legacy?.screen_name,
+                name: items?.content?.itemContent?.user_results?.result?.legacy?.name,
+                blue_verified: items?.content?.itemContent?.user_results?.result?.is_blue_verified,
+                can_dm: items?.content?.itemContent?.user_results?.result?.legacy?.can_dm,
+                description: items?.content?.itemContent?.user_results?.result?.legacy?.description,
+                favorite: items?.content?.itemContent?.user_results?.result?.legacy?.favourites_count,
+                followers: items?.content?.itemContent?.user_results?.result?.legacy?.followers_count,
+                following: items?.content?.itemContent?.user_results?.result?.legacy?.friends_count,
+                location: items?.content?.itemContent?.user_results?.result?.legacy?.location,
+                profile: items?.content?.itemContent?.user_results?.result?.legacy?.profile_image_url_https,
+                verified: items?.content?.itemContent?.user_results?.result?.legacy?.verified
+            }
+        ))
+        return content
     }
 }
 
