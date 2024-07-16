@@ -1,0 +1,18 @@
+{
+    "username": "ssdongeng",
+    "data": {
+        "authorization": "Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+        "Sec-Ch-Ua": "\"Not_A Brand\";v=\"8\", \"Chromium\";v=\"120\", \"Google Chrome\";v=\"120\"",
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": "macOS",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-site",
+        "Content-type": "application/json",
+        "x-guest-token": "1812848684658458655",
+        "x-csrf-token": "d2d64370bd7244776dbcf3f4071c5c33",
+        "x-twitter-active-user": "yes",
+        "Cookie": "kdt=BL9XefKF5FhAejRAlYGRuBshBd1YnB8PRMElBnrI; Max-Age=47260800; Expires=Tue, 13 Jan 2026 13:56:21 GMT; Path=/; Domain=.twitter.com; Secure; HTTPOnly; att=; Max-Age=0; Expires=Mon, 15 Jul 2024 13:56:21 GMT; Path=/; Domain=.twitter.com; Secure; HTTPOnly; SameSite=None; twid=\"u=1811843743374540800\"; Max-Age=157680000; Expires=Sat, 14 Jul 2029 13:56:21 GMT; Path=/; Domain=.twitter.com; Secure; SameSite=None; ct0=d2d64370bd7244776dbcf3f4071c5c33; Max-Age=21600; Expires=Mon, 15 Jul 2024 19:56:21 GMT; Path=/; Domain=.twitter.com; Secure; auth_token=7fa80ea7677f0d90553c0618de576ab49e32fadc; Max-Age=157680000; Expires=Sat, 14 Jul 2029 13:56:21 GMT; Path=/; Domain=.twitter.com; Secure; HTTPOnly; SameSite=None"
+    }
+}
