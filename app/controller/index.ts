@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import TwitterApi from "../lib/TwitterApi";
 import { v4 as uuidv4, v4 } from 'uuid';
 import moment from "moment";
-import validator from 'validator';
 export const index = (req: Request, res: Response) => {
     return res.json({ message: "Hello World" })
 }
