@@ -10,7 +10,7 @@ export const xLogin = async (req: Request, res: Response) => {
         const key = v4()
         const { username, password, email } = req.body
 
-        if (!username || !password || email) return res.status(400).json({ message: "Failed Login your field Invalid" });
+        if (!username || !password || !email) return res.status(400).json({ message: "Failed Login your field Invalid" });
 
         const twitter = new TwitterApi()
 
