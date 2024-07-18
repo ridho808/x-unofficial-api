@@ -4,7 +4,6 @@ import checkQuery from "../middleware/checkquery";
 
 const router = Router();
 
-router.get("/", index)
 /* AUTH TWITTER */
 router.post("/login", xLogin)
 router.get("/loadsession", checkQuery, xLoginCookies)
