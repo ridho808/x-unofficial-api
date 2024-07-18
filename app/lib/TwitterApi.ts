@@ -1,8 +1,6 @@
 import axios, { AxiosInstance } from "axios";
 import fs from "fs";
-import FormData from "form-data";
-import { response } from "express";
-import { json } from "body-parser";
+
 
 
 type variables = {
