@@ -1,8 +1,7 @@
 import axios, { AxiosInstance } from "axios";
 import fs from "fs";
-
-
-
+import { Blob } from "buffer";
+import FormData from "form-data";
 type variables = {
     userId: string;
     count: number;
@@ -29,7 +28,7 @@ class TwitterApi {
         this.UserAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.53 Safari/537.36"
         this.PublicToken = "Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA"
         this.sSecChUa = '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"'
-        this.sSecChUaPlatform = "macOS"
+        this.sSecChUaPlatform = "Windows"
         this.session = axios.create()
         this.method_check_bypass = false
         this.flow_token = null
@@ -62,20 +61,21 @@ class TwitterApi {
             "accept": "*/*",
             'authorization': this.PublicToken,
             'User-Agent': this.UserAgent,
-            'Sec-Ch-Ua': this.sSecChUa,
+            'sec-ch-ua': this.sSecChUa,
             'Sec-Ch-Ua-Mobile': '?0',
-            'Sec-Ch-Ua-Platform': this.sSecChUaPlatform,
+            'sec-ch-ua-platform': this.sSecChUaPlatform,
             'Sec-Fetch-Dest': 'empty',
             'Sec-Fetch-Mode': 'cors',
             'Sec-Fetch-Site': 'same-site',
-            'Content-type': 'application/json',
+            'content-type': 'application/json',
             'x-guest-token': await this.get_guest_token(),
             'x-csrf-token': this.ct0,
             'x-twitter-active-user': 'yes',
-            'Cookie': this.cookie,
-            'Accept-Language': 'en-US,en;q=0.9',
+            'cookie': this.cookie,
+            'accept-Language': 'en-US,en;q=0.9',
             "Referrer-Policy": "strict-origin-when-cross-origin",
             "Referer": "https://x.com/",
+            "priority": "u=1, i"
         }
         return headers
     }
@@ -170,8 +170,6 @@ class TwitterApi {
 
         })
             .then((response) => {
-                console.log(response);
-
                 this.error_check(response.data)
                 this.flow_token = response.data.flow_token
                 this.content = response.data
@@ -234,9 +232,8 @@ class TwitterApi {
                 }
             ],
         })
-
         try {
-            const response = await this.session.post('https://twitter.com/i/api/1.1/onboarding/task.json', data, {
+            const response = await this.session.post('https://api.x.com/1.1/onboarding/task.json', data, {
                 headers: await this.get_headers(),
             });
             await this.error_check(response.data);
@@ -310,10 +307,11 @@ class TwitterApi {
             ],
         };
         try {
-            const response = await this.session.post('https://twitter.com/i/api/1.1/onboarding/task.json', data, {
+            const response = await this.session.post(' https://api.x.com/1.1/onboarding/task.json', data, {
                 headers: await this.get_headers(),
             });
             await this.error_check(response.data);
+            console.log(response.data);
             this.flow_token = response.data.flow_token;
             this.content = response.data;
             if (response.headers['set-cookie']) {
@@ -330,6 +328,8 @@ class TwitterApi {
             }
             return this;
         } catch (error) {
+            console.log(error);
+
             return Promise.reject(error);
         }
     }
@@ -408,11 +408,45 @@ class TwitterApi {
                 headers: await this.get_headers(),
             });
             return this
-        } catch (error) {
+        } catch (error: any) {
             return Promise.reject(error)
         }
     }
-
+    async Login(username: string, password: string, email: string, key: string): Promise<{ data: string | null, message: string }> {
+        try {
+            console.log("Login ======== > ", username, password);
+            await this.login_flow();
+            let Username = username
+            let Password = password
+            let login = false
+            while (!login) {
+                console.log(this.get_subtask_ids());
+                if (this.get_subtask_ids().includes('LoginJsInstrumentationSubtask')) {
+                    await this.LoginJsInstrumentationSubtask();
+                } else if (this.get_subtask_ids().includes('LoginEnterUserIdentifierSSO')) {
+                    await this.LoginEnterUserIdentifierSSO(Username);
+                } else if (this.get_subtask_ids().includes('LoginEnterPassword')) {
+                    await this.LoginEnterPassword(Password);
+                } else if (this.get_subtask_ids().includes('AccountDuplicationCheck')) {
+                    await this.AccountDuplicationCheck();
+                } else if (this.get_subtask_ids().includes('LoginEnterAlternateIdentifierSubtask')) {
+                    await this.LoginEnterAlternateIdentifierSubtask(email);
+                } else if (this.get_subtask_ids().includes('StartNewLoginFlowSubtask')) {
+                    fs.writeFileSync(`./app/store/${key}.json`, JSON.stringify({ username: username, data: await this.get_headers() }), "utf-8")
+                    login = true
+                    break
+                } else if (this.get_subtask_ids().includes('SuccessExit')) {
+                    fs.writeFileSync(`./app/store/${key}.json`, JSON.stringify({ username: username, data: await this.get_headers() }), "utf-8")
+                    console.log(this.get_subtask_ids())
+                    login = true
+                    break
+                }
+            }
+            return { data: this.cookie, message: "SUCCESS LOGIN AS " + username }
+        } catch (error: any) {
+            return Promise.reject({ data: null, message: "FAILED LOGIN AS " + username + " " });
+        }
+    }
     async GetLocationTrends(location: string): Promise<any> {
         try {
             const response = await this.session.get(`https://x.com/i/api/2/guide/explore_locations_with_auto_complete.json?prefix=${location}`, {
@@ -532,50 +566,20 @@ class TwitterApi {
             return error
         }
     }
-    async Login(username: string, password: string, email: string, key: string): Promise<{ data: string | null, message: string }> {
-        try {
-            console.log("Login ======== > ", username, password);
-            await this.login_flow();
-            let Username = username
-            let Password = password
-            let login = false
-            while (!login) {
-                console.log(this.get_subtask_ids());
-                if (this.get_subtask_ids().includes('LoginJsInstrumentationSubtask')) {
-                    await this.LoginJsInstrumentationSubtask();
-                } else if (this.get_subtask_ids().includes('LoginEnterUserIdentifierSSO')) {
-                    await this.LoginEnterUserIdentifierSSO(Username);
-                } else if (this.get_subtask_ids().includes('LoginEnterPassword')) {
-                    await this.LoginEnterPassword(Password);
-                } else if (this.get_subtask_ids().includes('AccountDuplicationCheck')) {
-                    await this.AccountDuplicationCheck();
-                } else if (this.get_subtask_ids().includes('LoginEnterAlternateIdentifierSubtask')) {
-                    await this.LoginEnterAlternateIdentifierSubtask(email);
-                } else if (this.get_subtask_ids().includes('SuccessExit')) {
-                    fs.writeFileSync(`./app/store/${key}.json`, JSON.stringify({ username: username, data: await this.get_headers() }), "utf-8")
-                    console.log(this.get_subtask_ids())
-                    login = true
-                    break
-                }
-            }
-            return { data: this.cookie, message: "SUCCESS LOGIN AS " + username }
-        } catch (error: any) {
-            return Promise.reject({ data: null, message: "FAILED LOGIN AS " + username + " " });
-        }
-    }
+
     async LoginCookies(keys: string) {
         try {
             let ReadFile = fs.readFileSync(`./app/store/${keys}.json`, "utf-8");
             let { data } = JSON.parse(ReadFile);
             this.PublicToken = data.authorization
             this.UserAgent = data['User-Agent']
-            this.sSecChUa = data["Sec-Ch-Ua"]
-            this.sSecChUaPlatform = data["Sec-Ch-Ua-Platform"]
+            this.sSecChUa = data["sec-ch-ua"]
+            this.sSecChUaPlatform = data["sec-ch-ua-platform"]
             this.ct0 = data["x-csrf-token"]
-            this.cookie = data["Cookie"]
+            this.cookie = data["cookie"]
             await this.get_headers()
             return this
-        } catch (error) {
+        } catch (error: any) {
             return Promise.reject(error)
         }
     }
@@ -758,129 +762,133 @@ class TwitterApi {
             return Promise.reject(error)
         }
     }
+
     // Not Work
-    // async PostImages(bytes: string, img_types: string): Promise<any> {
-    //     try {
-    //         const url = "https://upload.x.com/i/media/upload.json";
-    //         const params = {
-    //             command: "INIT",
-    //             total_bytes: bytes,
-    //             media_type: img_types,
-    //             media_category: "tweet_image"
-    //         };
+    async PostImages(bytes: string, img_types: string): Promise<any> {
+        try {
+            console.log("POST FIRST");
+            const url = "https://upload.twitter.com/1.1/media/upload.json";
+            const params = {
+                command: "INIT",
+                total_bytes: bytes,
+                media_type: img_types,
+                media_category: "tweet_image"
+            };
 
-    //         let response = await axios.post(url, null, {
-    //             headers: await this.get_headers(),
-    //             params: params
-    //         })
-    //         return response.data
-    //     } catch (error) {
-    //         return Promise.reject(error)
-    //     }
-    // }
-    // async PostAppendImages(media_id: string, bin: string) {
-    //     const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substr(2, 12);
-    //     let data = new FormData();
-    //     let newHead = {
-    //         ...await this.get_headers(),
-    //     }
-    //     let base64 = fs.readFileSync(bin, { encoding: "base64" })
-    //     data.append("media", base64)
-    //     axios.post(`https://upload.x.com/i/media/upload.json?command=APPEND&media_id=${media_id}&segment_index=0&media_data=${media_id}`, null, {
-    //         "headers": await this.get_headers(),
-    //     }).then((data) => {
-    //         console.log(data.data);
-    //         return data.headers
-    //     }).catch((err) => {
-    //         console.log(err.response);
+            let response = await axios.post(url, null, {
+                headers: await this.get_headers(),
+                params: params
+            })
 
-    //         return err.response.data
-    //     })
+            return response.data
+        } catch (error) {
+            return Promise.reject(error)
+        }
+    }
 
-    // }
-    // async PostFINALImages(media_id: string, md5: string) {
-    //     fetch(`https://upload.x.com/i/media/upload.json?command=FINALIZE&media_id=${media_id}&original_md5=${md5}`, {
-    //         "headers": {
-    //             "accept": "*/*",
-    //             "accept-language": "en-US,en;q=0.9",
-    //             "authorization": "Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA",
-    //             "priority": "u=1, i",
-    //             "sec-ch-ua": "\"Not/A)Brand\";v=\"8\", \"Chromium\";v=\"126\", \"Google Chrome\";v=\"126\"",
-    //             "sec-ch-ua-mobile": "?0",
-    //             "sec-ch-ua-platform": "\"Windows\"",
-    //             "sec-fetch-dest": "empty",
-    //             "sec-fetch-mode": "cors",
-    //             "sec-fetch-site": "same-site",
-    //             "x-csrf-token": "702f1de43d9a713a284e1d33f056ddc76b02f325eb8ab26861aeb0a8b5ea68e244f2ffb6bc04bfff5555a9d59d2d0932db070b15670ab81574c1981d55b5d30c418cd4e908e00e923146915bc251fd1a",
-    //             "x-twitter-auth-type": "OAuth2Session",
-    //             "cookie": "night_mode=2; kdt=8pVNRYdTwe3lcr7J4oUKn76HS4TiUTtafsHtyHEA; dnt=1; guest_id=v1%3A172112222664817468; guest_id_marketing=v1%3A172112222664817468; guest_id_ads=v1%3A172112222664817468; auth_token=8ddcca90973a7050aaf68387e496ad17320d87f4; ct0=702f1de43d9a713a284e1d33f056ddc76b02f325eb8ab26861aeb0a8b5ea68e244f2ffb6bc04bfff5555a9d59d2d0932db070b15670ab81574c1981d55b5d30c418cd4e908e00e923146915bc251fd1a; twid=u%3D1811843743374540800; external_referer=padhuUp37zjgzgv1mFWxJ12Ozwit7owX|0|8e8t2xd8A2w%3D; personalization_id=\"v1_3V6nY/g+bF/VQRg8OMfmfQ==\"; lang=en",
-    //             "Referer": "https://x.com/",
-    //             "Referrer-Policy": "strict-origin-when-cross-origin"
-    //         },
-    //         "body": null,
-    //         "method": "POST"
-    //     }).then((res) => {
-    //         if (res.status == 400) {
-    //             return res.status
-    //         }
-    //         return res
-    //     })
-    // }
-    // async PostImgTweets(media_id: string, caption: string) {
-    //     try {
-    //         let variables = {
-    //             "variables": {
-    //                 "tweet_text": caption,
-    //                 "dark_request": false,
-    //                 "media": {
-    //                     "media_entities": [
-    //                         {
-    //                             "media_id": media_id,
-    //                             "tagged_users": []
-    //                         }
-    //                     ],
-    //                     "possibly_sensitive": false
-    //                 },
-    //                 "semantic_annotation_ids": []
-    //             },
-    //             "features": {
-    //                 "communities_web_enable_tweet_community_results_fetch": true,
-    //                 "c9s_tweet_anatomy_moderator_badge_enabled": true,
-    //                 "tweetypie_unmention_optimization_enabled": true,
-    //                 "responsive_web_edit_tweet_api_enabled": true,
-    //                 "graphql_is_translatable_rweb_tweet_is_translatable_enabled": true,
-    //                 "view_counts_everywhere_api_enabled": true,
-    //                 "longform_notetweets_consumption_enabled": true,
-    //                 "responsive_web_twitter_article_tweet_consumption_enabled": true,
-    //                 "tweet_awards_web_tipping_enabled": false,
-    //                 "creator_subscriptions_quote_tweet_preview_enabled": false,
-    //                 "longform_notetweets_rich_text_read_enabled": true,
-    //                 "longform_notetweets_inline_media_enabled": true,
-    //                 "articles_preview_enabled": true,
-    //                 "rweb_video_timestamps_enabled": true,
-    //                 "rweb_tipjar_consumption_enabled": true,
-    //                 "responsive_web_graphql_exclude_directive_enabled": true,
-    //                 "verified_phone_label_enabled": false,
-    //                 "freedom_of_speech_not_reach_fetch_enabled": true,
-    //                 "standardized_nudges_misinfo": true,
-    //                 "tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled": true,
-    //                 "responsive_web_graphql_skip_user_profile_image_extensions_enabled": false,
-    //                 "responsive_web_graphql_timeline_navigation_enabled": true,
-    //                 "responsive_web_enhance_cards_enabled": false
-    //             },
-    //             "queryId": "oB-5XsHNAbjvARJEc8CZFw"
-    //         }
-    //         const url = "https://x.com/i/api/graphql/oB-5XsHNAbjvARJEc8CZFw/CreateTweet";
-    //         let response = await axios.post(url, variables, {
-    //             headers: await this.get_headers(),
-    //         })
-    //         return response.data
-    //     } catch (error) {
-    //         console.log(error);
-    //         return error
-    //     }
-    // }
-    // Not Work
+
+    async PostAppendImages(media_id: string, bin: string) {
+        console.log("Append");
+        const CHUNK_SIZE = 1024 * 1024 * 5;
+        const readStream = fs.createReadStream(bin, { highWaterMark: CHUNK_SIZE });
+        let segmentIndex = 0;
+        let data = []
+        const chunks = [];
+        for await (const chunk of readStream) {
+            chunks.push(chunk);
+        }
+        for (let i = 0; i < chunks.length; i++) {
+            const formData = new FormData();
+            formData.append('media', chunks[i], "blob");
+            try {
+                await axios.post(`https://upload.x.com/i/media/upload.json?command=APPEND&media_id=${media_id}&segment_index=${segmentIndex}`, formData, {
+                    headers: {
+                        ...await this.get_headers(),
+                        "x-twitter-auth-type": "OAuth2Session",
+                        "content-type": "multipart/form-data; "
+                    }
+                });
+                data.push(segmentIndex);
+                segmentIndex++;
+            } catch (error) {
+                data.push(false);
+                break;
+            }
+        }
+        return data;
+    }
+    async PostFINALImages(media_id: string, md5: string) {
+        console.log("POST FINAL");
+        fetch(`https://upload.x.com/i/media/upload.json?command=FINALIZE&media_id=` + media_id + `&original_md5=${md5}`, {
+            "headers": {
+                ...await this.get_headers(),
+            },
+            "body": null,
+            "method": "POST"
+        }).then((response) => {
+            return response.json()
+        }).then((result) => {
+            return result.data
+        }).catch((err) => {
+            return err
+        })
+    }
+    async PostImgTweets(media_id: string, caption: string) {
+        try {
+            let variables = {
+                "variables": {
+                    "tweet_text": caption,
+                    "dark_request": false,
+                    "media": {
+                        "media_entities": [
+                            {
+                                "media_id": media_id,
+                                "tagged_users": []
+                            }
+                        ],
+                        "possibly_sensitive": false
+                    },
+                    "semantic_annotation_ids": []
+                },
+                "features": {
+                    "communities_web_enable_tweet_community_results_fetch": true,
+                    "c9s_tweet_anatomy_moderator_badge_enabled": true,
+                    "tweetypie_unmention_optimization_enabled": true,
+                    "responsive_web_edit_tweet_api_enabled": true,
+                    "graphql_is_translatable_rweb_tweet_is_translatable_enabled": true,
+                    "view_counts_everywhere_api_enabled": true,
+                    "longform_notetweets_consumption_enabled": true,
+                    "responsive_web_twitter_article_tweet_consumption_enabled": true,
+                    "tweet_awards_web_tipping_enabled": false,
+                    "creator_subscriptions_quote_tweet_preview_enabled": false,
+                    "longform_notetweets_rich_text_read_enabled": true,
+                    "longform_notetweets_inline_media_enabled": true,
+                    "articles_preview_enabled": true,
+                    "rweb_video_timestamps_enabled": true,
+                    "rweb_tipjar_consumption_enabled": true,
+                    "responsive_web_graphql_exclude_directive_enabled": true,
+                    "verified_phone_label_enabled": false,
+                    "freedom_of_speech_not_reach_fetch_enabled": true,
+                    "standardized_nudges_misinfo": true,
+                    "tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled": true,
+                    "responsive_web_graphql_skip_user_profile_image_extensions_enabled": false,
+                    "responsive_web_graphql_timeline_navigation_enabled": true,
+                    "responsive_web_enhance_cards_enabled": false
+                },
+                "queryId": "oB-5XsHNAbjvARJEc8CZFw"
+            }
+            const url = "https://x.com/i/api/graphql/oB-5XsHNAbjvARJEc8CZFw/CreateTweet";
+            let response = await axios.post(url, variables, {
+                headers: await this.get_headers(),
+            })
+            console.log(response.data);
+
+            return response.data
+        } catch (error) {
+            console.log("error", error);
+            return error
+        }
+    }
 }
 
 

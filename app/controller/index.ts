@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import TwitterApi from "../lib/TwitterApi";
 import { v4 as uuidv4, v4 } from 'uuid';
 import moment from "moment";
+import fs from "fs"
+import * as path from 'path';
+
 export const index = (req: Request, res: Response) => {
     return res.json({ message: "Hello World" })
 }
@@ -18,10 +21,9 @@ export const xLogin = async (req: Request, res: Response) => {
 
         AccountTwitter[key] = twitter
         let exp = moment().add(3, "days")
-
         return res.status(200).json({ message: "success", keyaccess: key, expired_keyaccess: exp })
     } catch (error: any) {
-        console.log(error.response);
+        console.log(error);
         return res.status(400).json({ message: "failde login", })
     }
 }
@@ -31,7 +33,7 @@ export const xPostTweet = async (req: Request, res: Response) => {
         const { keyaccess } = req.query as { keyaccess: string }
         const { tweet } = req.body as { tweet: string }
 
-        if (tweet.length > 280 || tweet.length == 0) return res.status(400).json({
+        if (tweet?.length > 280 || tweet?.length == 0) return res.status(400).json({
             message: "Failed Create Tweet [tweet] invalid"
         })
 
@@ -61,8 +63,7 @@ export const xLoginCookies = async (req: Request, res: Response) => {
         await AccountTwitter[keyaccess].HelperLogin()
         return res.status(200).json({ message: "success restore session", key: keyaccess })
     } catch (error) {
-        console.log(error);
-        return res.status(400).json({ message: "failed restore session", data: "BAD REQUEST 404" })
+        return res.status(400).json({ message: "failed restore session", data: "please login for key access" })
     }
 }
 
@@ -125,7 +126,6 @@ export const GetinfoUser = async (req: Request, res: Response) => {
 }
 
 export const GetTweetUser = async (req: Request, res: Response) => {
-
     try {
         const { keyaccess, userid } = req.query as { keyaccess: string, userid: string }
 
@@ -146,13 +146,10 @@ export const GetTweetUser = async (req: Request, res: Response) => {
             }))
         let final = full_text
         return res.json({ message: "succes get tweet user", data: final })
-
     } catch (error) {
         return res.status(400).json({ message: "Failed get tweet user", data: [] })
     }
 }
-
-
 export const SearchPeople = async (req: Request, res: Response) => {
     try {
         const { keyaccess, username } = req.query as { keyaccess: string, username: string }
@@ -164,7 +161,6 @@ export const SearchPeople = async (req: Request, res: Response) => {
         return res.status(400).json({ message: "Failed get info user", data: [] })
     }
 }
-
 export const UserMediaCollection = async (req: Request, res: Response) => {
     try {
         const { keyaccess, userid, next } = req.query as { keyaccess: string, userid: string, next?: string }
@@ -253,42 +249,60 @@ export const UserMediaCollection = async (req: Request, res: Response) => {
         return res.status(400).json({ message: "failed get media user", data: [] })
     }
 }
-// const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
-// export const UploadImages = async (req: Request, res: Response) => {
-//     try {
-//         const { keyaccess } = req.query as { keyaccess: string }
-//         const { media } = req.files as any
-//         const { caption } = req.body
-
-//         const uploadsDir = path.join(__dirname, 'uploads');
-//         if (!fs.existsSync(uploadsDir)) {
-//             fs.mkdirSync(uploadsDir);
-//         }
-
-//         const uploadPath = path.join(uploadsDir, media.name);
-//         media.mv(uploadPath, async (err: any) => {
-//             if (err) {
-//                 return res.status(500).send(err);
-//             }
-//             // let bin = fs.readFileSync(uploadPath);
-//             await delay(3000)
-//             let response = await AccountTwitter[keyaccess].PostImages(media.size, media.mimetype);
-//             console.log(response.media_id);
-//             let append = await AccountTwitter[keyaccess].PostAppendImages(response.media_id, uploadPath);
-//             return res.json({ message: "success upload images", data: append })
-//         });
-
-//         // console.log("Json UPLOAD APPEND");
-//         // console.log("Json UPLOAD END", append);
-//         // let respon = await AccountTwitter[keyaccess].PostFINALImages(response.media_id, media.md5);
-//         // console.log("Json UPLOAD FINAL", respon);
-
-//         // await delay(5000)
-//         // let finalres = await AccountTwitter[keyaccess].PostImgTweets(response.media_id, caption);
-//         // return res.json({ message: "success upload images", })
-//     } catch (error) {
-//         console.log(error);
-
-//         return res.status(400).json({ message: "Failed upload images", data: error })
-//     }
-// }
+const delay = (ms: number) => new Promise(res => setTimeout(res, ms))
+export const UploadImages = async (req: Request, res: Response) => {
+    try {
+        const { keyaccess } = req.query as { keyaccess: string }
+        const { media } = req.files as any
+        const { caption } = req.body
+        let max = 1024 * 1024 * 5
+        if (media.size > max) {
+            return res.status(400).json({ message: "Max 5 MB" });
+        }
+        if (media.size == undefined) {
+            return res.status(400).json({ message: "Media must have values" });
+        }
+        const uploadsDir = path.join(__dirname, 'uploads');
+        if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir);
+        }
+        const uploadPath = path.join(uploadsDir, media.name);
+        media.mv(uploadPath, async (err: any) => {
+            if (err) {
+                return res.status(500).send(err);
+            }
+            let time = Math.floor(media.size / 300)
+            let response = await AccountTwitter[keyaccess].PostImages(media.size, media.mimetype);
+            await AccountTwitter[keyaccess].PostAppendImages(response.media_id_string, uploadPath);
+            await delay(time)
+            await AccountTwitter[keyaccess].PostFINALImages(response.media_id_string, media.md5);
+            await delay(time)
+            let finalres = await AccountTwitter[keyaccess].PostImgTweets(response.media_id_string, caption);
+            let Result = finalres?.data?.create_tweet?.tweet_results?.result
+            if (Result == undefined) {
+                return res.status(400).json({ message: "Failed upload images" });
+            }
+            const { legacy } = Result
+            const { full_text } = legacy
+            const { entities } = legacy
+            const names = Result?.core?.user_results?.result?.legacy?.screen_name
+            let RESULT = {
+                username: names,
+                text: full_text?.split("https://t.co/")[0],
+                media: entities?.media?.map((values: any) => {
+                    return {
+                        display_url: values.display_url,
+                        expanded_url: values.expanded_url,
+                        media_url_https: values.media_url_https,
+                        type: values.type
+                    }
+                })
+            }
+            fs.unlinkSync(uploadPath)
+            return res.json({ message: "success upload images", data: RESULT })
+        });
+    } catch (error) {
+        console.log(error);
+        return res.status(400).json({ message: "Failed upload images" })
+    }
+}

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { GetLocation, GetTrends, GetTweetUser, GetinfoUser, SearchPeople, UserMediaCollection, index, xLogin, xLoginCookies, xPostTweet } from "../controller";
+import { GetLocation, GetTrends, GetTweetUser, GetinfoUser, SearchPeople, UploadImages, UserMediaCollection, index, xLogin, xLoginCookies, xPostTweet } from "../controller";
 import checkQuery from "../middleware/checkquery";
 
 const router = Router();
@@ -18,7 +18,7 @@ router.get("/gettrends", checkQuery, GetTrends)
 /* POST TWEET */
 router.post("/posttweet", checkQuery, xPostTweet)
 
-// router.post("/uploadphoto", checkQuery, UploadImages)
+router.post("/uploadphoto", checkQuery, UploadImages)
 
 
 export default router
